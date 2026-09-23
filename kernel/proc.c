@@ -701,8 +701,22 @@ procdump(void)
 // TODO(Dev 2): recorrer proc[] y contar los procesos en estado RUNNABLE,
 // tomando p->lock en cada iteracion (ver procdump() aqui arriba como modelo).
 // ---------------------------------------------------------------------------
+
 int
 count_runnable(void)
 {
-  return 0;
+  int count = 0;
+  struct proc *p;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+
+    if (p->state == RUNNABLE) {
+      count++;
+    }
+
+    release(&p->lock);
+  }
+
+  return count;
 }

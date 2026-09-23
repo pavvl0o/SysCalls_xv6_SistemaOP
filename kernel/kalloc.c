@@ -86,8 +86,20 @@ kalloc(void)
 // TODO(Dev 2): recorrer kmem.freelist contando nodos, con kmem.lock tomado.
 // Retorna el numero de paginas fisicas de 4 KB libres.
 // ---------------------------------------------------------------------------
+
 uint64
 free_pages(void)
 {
-  return 0;
+  uint64 count = 0;
+  struct run *r;
+
+  acquire(&kmem.lock);
+
+  for (r = kmem.freelist; r != 0; r = r->next) {
+    count++;
+  }
+
+  release(&kmem.lock);
+
+  return count;
 }
