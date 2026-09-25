@@ -26,7 +26,10 @@ main(int argc, char *argv[])
   // hijos tambien, porque fork copia trace_num al hijo.
   exec(argv[2], &argv[2]);
 
-  // Si exec retorna, es que fallo.
+  // Si exec retorna, es que fallo. Antes de reportarlo se desactiva el
+  // rastreo: si no, el propio mensaje de error quedaria rastreado (por
+  // ejemplo con sys_write, que fprintf llama una vez por caracter).
+  trace(0);
   fprintf(2, "trace: no se pudo ejecutar '%s'\n", argv[2]);
   exit(1);
 }

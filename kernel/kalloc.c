@@ -82,11 +82,11 @@ kalloc(void)
 }
 
 // ---------------------------------------------------------------------------
-// Proyecto 2 - andamiaje.
-// TODO(Dev 2): recorrer kmem.freelist contando nodos, con kmem.lock tomado.
-// Retorna el numero de paginas fisicas de 4 KB libres.
+// Proyecto 2 (sysinfo).
 // ---------------------------------------------------------------------------
 
+// Retorna el numero de paginas fisicas de 4 KB libres, recorriendo
+// kmem.freelist con kmem.lock tomado para que la lista no cambie a mitad.
 uint64
 free_pages(void)
 {
@@ -102,4 +102,15 @@ free_pages(void)
   release(&kmem.lock);
 
   return count;
+}
+
+// Retorna el numero total de paginas fisicas que administra este asignador:
+// las que kinit() le entrego, desde el final del kernel (redondeado a pagina,
+// igual que en freerange) hasta PHYSTOP. No incluye las paginas que ocupa el
+// propio kernel. Las usadas se calculan como total - libres en sys_sysinfo,
+// con un solo conteo de libres, para que usadas + libres = total siempre.
+uint64
+total_pages(void)
+{
+  return (PHYSTOP - PGROUNDUP((uint64)end)) / PGSIZE;
 }

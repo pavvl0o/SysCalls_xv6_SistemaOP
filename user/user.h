@@ -25,9 +25,9 @@ int getpid(void);
 char *sys_sbrk(int, int);
 int pause(int);
 int uptime(void);
-int sync(void);
 int trace(const char *);        // Proyecto 2
 int sysinfo(struct sysinfo *);  // Proyecto 2
+int sync(void);
 
 // ulib.c
 int stat(const char *, struct stat *);

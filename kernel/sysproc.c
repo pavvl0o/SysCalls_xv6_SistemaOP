@@ -81,7 +81,10 @@ sys_pause(void)
       release(&tickslock);
       return -1;
     }
-    sleep(&ticks, &tickslock);
+    sleep_prepare(&ticks);
+    release(&tickslock);
+    sleep();
+    acquire(&tickslock);
   }
   release(&tickslock);
   return 0;
@@ -110,18 +113,28 @@ sys_uptime(void)
 }
 
 // ---------------------------------------------------------------------------
-// Proyecto 2 - andamiaje. Cuerpos vacios: solo registran la syscall.
+// Proyecto 2: syscalls trace y sysinfo.
 // ---------------------------------------------------------------------------
 
 // Proyecto 2: trace(nombre) empieza a rastrear la syscall indicada para este
 // proceso. El argumento es una cadena en memoria de usuario ("sys_kill"), no un
 // numero, tal como pide el enunciado.
-// Retorna 0 si quedo rastreando, -1 si el nombre no existe o no se pudo leer.
+// Con un puntero nulo, trace(0), se desactiva el rastreo: lo usa user/trace.c
+// cuando exec falla, para que su mensaje de error no quede rastreado.
+// Retorna 0 si quedo rastreando (o desactivado), -1 si el nombre no existe o
+// no se pudo leer.
 uint64
 sys_trace(void)
 {
   char name[32]; // el nombre mas largo de la tabla es "sys_sysinfo"
   int num;
+  uint64 addr;
+
+  argaddr(0, &addr);
+  if (addr == 0) {
+    myproc()->trace_num = 0;
+    return 0;
+  }
 
   // argstr copia la cadena desde el espacio de usuario a memoria del kernel.
   // Falla si el puntero es invalido o si el nombre no cabe en el buffer.
@@ -135,11 +148,29 @@ sys_trace(void)
   return 0;
 }
 
-// TODO(Dev 3): armar un struct sysinfo con los datos que entregan free_pages()
-// y count_runnable(), y copiarlo al puntero de usuario con copyout().
-// Debe retornar -1 si copyout() falla.
+// Proyecto 2: sysinfo(&info) llena un struct sysinfo con el estado actual del
+// sistema y lo copia al puntero de usuario con copyout().
+// Retorna 0 si todo salio bien, -1 si copyout() falla (puntero invalido).
 uint64
 sys_sysinfo(void)
 {
+  struct sysinfo info;
+  uint64 addr; // dirección de memoria de usuario donde pondremos el struct
+  struct proc *p = myproc();
+
+  //obtener la dirección (puntero) que el usuario nos mandó como argumento
+  argaddr(0, &addr);
+
+  //llenar la estructura con los datos del sistema. Las libres se cuentan una
+  //sola vez y las usadas salen de ese mismo numero, asi usadas + libres = total.
+  info.freepages = free_pages();
+  info.usedpages = total_pages() - info.freepages;
+  info.freemem = info.freepages * PGSIZE; // PGSIZE es 4096 bytes
+  info.nrunnable = count_runnable();
+
+  // copiar la estructura del kernel a la memoria del usuario con copyout()
+  if (copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+
   return 0;
 }

@@ -15,7 +15,7 @@ fetchaddr(uint64 addr, uint64 *ip)
   if (addr >= p->sz ||
       addr + sizeof(uint64) > p->sz) // both tests needed, in case of overflow
     return -1;
-  if (copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
+  if (copyin(p->pagetable, p->sz, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
   return 0;
 }
@@ -26,7 +26,7 @@ int
 fetchstr(uint64 addr, char *buf, int max)
 {
   struct proc *p = myproc();
-  if (copyinstr(p->pagetable, buf, addr, max) < 0)
+  if (copyinstr(p->pagetable, p->sz, buf, addr, max) < 0)
     return -1;
   return strlen(buf);
 }
@@ -103,71 +103,69 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_sync(void);
-extern uint64 sys_trace(void);
-extern uint64 sys_sysinfo(void);
+extern uint64 sys_trace(void);   // Proyecto 2
+extern uint64 sys_sysinfo(void); // Proyecto 2
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
   // clang-format off
-  [SYS_fork]    sys_fork,
-  [SYS_exit]    sys_exit,
-  [SYS_wait]    sys_wait,
-  [SYS_pipe]    sys_pipe,
-  [SYS_read]    sys_read,
-  [SYS_kill]    sys_kill,
-  [SYS_exec]    sys_exec,
-  [SYS_fstat]   sys_fstat,
-  [SYS_chdir]   sys_chdir,
-  [SYS_dup]     sys_dup,
-  [SYS_getpid]  sys_getpid,
-  [SYS_sbrk]    sys_sbrk,
-  [SYS_pause]   sys_pause,
-  [SYS_uptime]  sys_uptime,
-  [SYS_open]    sys_open,
-  [SYS_write]   sys_write,
-  [SYS_mknod]   sys_mknod,
-  [SYS_unlink]  sys_unlink,
-  [SYS_link]    sys_link,
-  [SYS_mkdir]   sys_mkdir,
-  [SYS_close]   sys_close,
-  [SYS_sync]    sys_sync,
-  [SYS_trace]   sys_trace,
-  [SYS_sysinfo] sys_sysinfo,
+  [SYS_fork]    = sys_fork,
+  [SYS_exit]    = sys_exit,
+  [SYS_wait]    = sys_wait,
+  [SYS_pipe]    = sys_pipe,
+  [SYS_read]    = sys_read,
+  [SYS_kill]    = sys_kill,
+  [SYS_exec]    = sys_exec,
+  [SYS_fstat]   = sys_fstat,
+  [SYS_chdir]   = sys_chdir,
+  [SYS_dup]     = sys_dup,
+  [SYS_getpid]  = sys_getpid,
+  [SYS_sbrk]    = sys_sbrk,
+  [SYS_pause]   = sys_pause,
+  [SYS_uptime]  = sys_uptime,
+  [SYS_open]    = sys_open,
+  [SYS_write]   = sys_write,
+  [SYS_mknod]   = sys_mknod,
+  [SYS_unlink]  = sys_unlink,
+  [SYS_link]    = sys_link,
+  [SYS_mkdir]   = sys_mkdir,
+  [SYS_close]   = sys_close,
+  [SYS_sync]    = sys_sync,
+  [SYS_trace]   = sys_trace,
+  [SYS_sysinfo] = sys_sysinfo,
   // clang-format on
 };
 
 // Proyecto 2: nombres de las syscalls indexados por su numero (ver syscall.h).
 // Sirve para dos cosas: resolver el nombre que recibe trace como argumento,
 // y mostrar el nombre de la syscall interceptada en la traza.
-// No es 'static' a proposito: asi no rompe la compilacion con -Werror mientras
-// todavia no se use.
-char *syscall_names[] = {
+static char *syscall_names[] = {
   // clang-format off
-  [SYS_fork]    "sys_fork",
-  [SYS_exit]    "sys_exit",
-  [SYS_wait]    "sys_wait",
-  [SYS_pipe]    "sys_pipe",
-  [SYS_read]    "sys_read",
-  [SYS_kill]    "sys_kill",
-  [SYS_exec]    "sys_exec",
-  [SYS_fstat]   "sys_fstat",
-  [SYS_chdir]   "sys_chdir",
-  [SYS_dup]     "sys_dup",
-  [SYS_getpid]  "sys_getpid",
-  [SYS_sbrk]    "sys_sbrk",
-  [SYS_pause]   "sys_pause",
-  [SYS_uptime]  "sys_uptime",
-  [SYS_open]    "sys_open",
-  [SYS_write]   "sys_write",
-  [SYS_mknod]   "sys_mknod",
-  [SYS_unlink]  "sys_unlink",
-  [SYS_link]    "sys_link",
-  [SYS_mkdir]   "sys_mkdir",
-  [SYS_close]   "sys_close",
-  [SYS_sync]    "sys_sync",
-  [SYS_trace]   "sys_trace",
-  [SYS_sysinfo] "sys_sysinfo",
+  [SYS_fork]    = "sys_fork",
+  [SYS_exit]    = "sys_exit",
+  [SYS_wait]    = "sys_wait",
+  [SYS_pipe]    = "sys_pipe",
+  [SYS_read]    = "sys_read",
+  [SYS_kill]    = "sys_kill",
+  [SYS_exec]    = "sys_exec",
+  [SYS_fstat]   = "sys_fstat",
+  [SYS_chdir]   = "sys_chdir",
+  [SYS_dup]     = "sys_dup",
+  [SYS_getpid]  = "sys_getpid",
+  [SYS_sbrk]    = "sys_sbrk",
+  [SYS_pause]   = "sys_pause",
+  [SYS_uptime]  = "sys_uptime",
+  [SYS_open]    = "sys_open",
+  [SYS_write]   = "sys_write",
+  [SYS_mknod]   = "sys_mknod",
+  [SYS_unlink]  = "sys_unlink",
+  [SYS_link]    = "sys_link",
+  [SYS_mkdir]   = "sys_mkdir",
+  [SYS_close]   = "sys_close",
+  [SYS_sync]    = "sys_sync",
+  [SYS_trace]   = "sys_trace",
+  [SYS_sysinfo] = "sys_sysinfo",
   // clang-format on
 };
 
@@ -200,6 +198,22 @@ syscall(void)
     // poder mostrar los argumentos originales.
     uint64 a0_orig = p->trapframe->a0;
     uint64 a1_orig = p->trapframe->a1;
+
+    // Proyecto 2 (trace): sys_exit nunca retorna al despachador (el proceso
+    // muere dentro de kexit()), asi que si esperaramos al handler la traza no
+    // se imprimiria nunca. Para ese caso se imprime antes, sin valor de
+    // retorno; el codigo de salida queda visible en a0.
+    if (p->trace_num == num && num == SYS_exit) {
+      printk("PID: %d\n"
+             "SYSCALL: %s\n"
+             "RETURN: (no retorna)\n"
+             "s0: 0x%lx\n"
+             "s1: 0x%lx\n"
+             "a0: 0x%lx\n"
+             "a1: 0x%lx\n",
+             p->pid, syscall_names[num], p->trapframe->s0, p->trapframe->s1,
+             a0_orig, a1_orig);
+    }
 
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
